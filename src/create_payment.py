@@ -57,11 +57,17 @@ def create_payment(payload: dict, fn: str):
                 print("enough credit")
                 commit_payment(username, quantity, delivery)
                 print("payment committed successfully")
-                # celery_app.send_task("deduct_inventory", queue='q01', args=[payload, "commit_order"])
+                celery_app.send_task("update_inventory", queue='q03', args=[payload, "update_inventory"])
         except Exception as e:
             print(f"Error during database operation: {e}")
         finally:
             session.close()
+    elif fn == "rollback_payment":
+        rollback_payment(username, quantity, delivery)
+        celery_app.send_task("create_order", queue='q01', args=[payload, "rollback_order"])
+        print("pasyment service send task to rollback order")
+    else:
+        print("invalid function name in payment service kub")
 
 @celery_app.task
 def commit_payment(username: str, quantity: int, delivery: bool):
