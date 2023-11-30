@@ -1,7 +1,9 @@
 import os
 import sys
+import time
 from dotenv import load_dotenv
 from celery import Celery
+from celery.result import AsyncResult
 from sqlalchemy import insert, select
 from sqlalchemy import create_engine, insert
 from sqlalchemy.orm import sessionmaker
@@ -53,11 +55,16 @@ def create_payment(payload: dict, fn: str):
             if credit_amt.credit < quantity*10:
                 print("not enough credit")
                 celery_app.send_task("create_order", queue='q01', args=[payload, "rollback_order"])
+                return "INSUFFICIENT_FUND"                
             else:
                 print("enough credit")
                 commit_payment(username, quantity, delivery)
                 print("payment committed successfully")
-                celery_app.send_task("update_inventory", queue='q03', args=[payload, "update_inventory"])
+                inventory_task = celery_app.send_task("update_inventory", queue='q03', args=[payload, "update_inventory"])
+                #returning result to the order service
+                print("inventory_task_id="+str(inventory_task.id))
+                return waiting_inventory_result(inventory_task.id)
+
         except Exception as e:
             print(f"Error during database operation: {e}")
         finally:
@@ -69,6 +76,18 @@ def create_payment(payload: dict, fn: str):
     else:
         print("invalid function name in payment service kub")
 
+@celery_app.task
+def waiting_inventory_result(inventory_task_id):
+    time.sleep(0.2)
+    inventory_task_result = AsyncResult(inventory_task_id)
+    if inventory_task_result.ready():
+        result_value = inventory_task_result.result
+        print(f"Task result: {result_value}")
+        return result_value
+    else:
+        print("inventory task is still running...")
+        return "inventory task is still running..."
+    
 @celery_app.task
 def commit_payment(username: str, quantity: int, delivery: bool):
     print("commiting payment")
