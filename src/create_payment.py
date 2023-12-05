@@ -144,7 +144,7 @@ def create_payment(payload: dict, fn: str):
                     return waiting_inventory_result(inventory_task.id)
 
             except Exception as e:
-                print(f"Error during database operation: {e}")
+                logger.error(f"Error during database operation: {e}")
             finally:
                 session.close()
         elif fn == "rollback_payment":
