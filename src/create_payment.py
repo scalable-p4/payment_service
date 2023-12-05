@@ -172,7 +172,7 @@ def waiting_inventory_result(inventory_task_id):
     
 @celery_app.task
 def commit_payment(username: str, quantity: int, delivery: bool):
-    with tracer.start_as_current_span("commit_create_order"):
+    with tracer.start_as_current_span("commit_create_payment"):
         print("commiting payment")
         session = Session()
         try:
@@ -189,7 +189,7 @@ def commit_payment(username: str, quantity: int, delivery: bool):
 
 @celery_app.task
 def rollback_payment(username: str, quantity: int, delivery: bool):
-    with tracer.start_as_current_span("rollback_order"):
+    with tracer.start_as_current_span("rollback_payment"):
         print("rollback payment")
         session = Session()
         try:
