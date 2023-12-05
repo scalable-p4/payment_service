@@ -5,11 +5,20 @@ from dotenv import load_dotenv
 from celery import Celery
 from sqlalchemy import insert, select
 from celery.result import AsyncResult
+from opentelemetry import trace, metrics
+import logging
+
+tracer = trace.get_tracer(__name__)
+meter = metrics.get_meter(__name__)
+logger = logging.getLogger(__name__)
+
+
 router = APIRouter()
 
 @router.get("/hello", status_code=status.HTTP_200_OK)
 async def say_hi():
-    return {"message": "Hello World payment"}
+    with tracer.start_as_current_span("get_hello_payment"):
+        return {"message": "Hello World payment"}
 
 # @router.post("/order", status_code=status.HTTP_201_CREATED)
 # async def order(
